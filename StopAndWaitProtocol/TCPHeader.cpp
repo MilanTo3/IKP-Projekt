@@ -5,12 +5,6 @@
 
 int udp_sendto(SOCKET uticnica, Frame frame, int duzinapodataka, LPSOCKADDR destination, int destinationlen) {
 	// TODO here
-	if (uticnica == INVALID_SOCKET) {
-		return 100;
-	}
-	else if (duzinapodataka < 0) {
-		return 101;
-	}
 
 	int result = 0;
 	int sentbytes = 0;
@@ -28,13 +22,6 @@ int udp_sendto(SOCKET uticnica, Frame frame, int duzinapodataka, LPSOCKADDR dest
 }
 
 int udp_recvfrom(SOCKET uticnica, Frame *frame, int duzinapodataka, int flag, LPSOCKADDR clientaddress, int *clientlen) {
-
-	if (uticnica == INVALID_SOCKET) {
-		return 100;
-	}
-	else if (duzinapodataka < 0) {
-		return 101;
-	}
 
 	int result = 0;
 	int receivedbytes = 0;

@@ -9,6 +9,7 @@ typedef struct udp_Header {
 	unsigned int sequencenum;
 	unsigned short length;
 	unsigned short checksum;
+	bool lastframe;
 
 } udpHeader;
 
@@ -20,5 +21,5 @@ typedef struct frame {
 } Frame;
 
 int calculateCRC(char* data, int duzinapodataka, int polinom);
-Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenum);
+Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenum, bool lastframe);
 

@@ -4,7 +4,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenumber) {
+Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenumber, bool lastframe) {
 
 	Frame frame;
 	memset(&frame, 0, sizeof(Frame));
@@ -13,6 +13,7 @@ Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenumber) {
 	header.checksum = 0; // Postaviti ovde na nesto drugo.
 	header.length = duzinapodataka;
 	header.sequencenum = sequencenumber;
+	header.lastframe = lastframe;
 
 	frame.header = header;
 	memcpy(frame.data, data, duzinapodataka);

@@ -73,10 +73,13 @@ int main(int argc,char* argv[])
 		// set whole buffer to zero
         memset(accessBuffer, 0, ACCESS_BUFFER_SIZE);
 
+        char* largetext = (char*)malloc(sizeof(1000));
+        memset(largetext, 0, 1000);
+
 		// receive client message
         iResult = snwarq_recvfrom(serverSocket,
-			               accessBuffer,
-						   ACCESS_BUFFER_SIZE,
+			               largetext,
+						   1000,
 						   0,
 						   (LPSOCKADDR)&clientAddress,
 						   &sockAddrLen);
@@ -87,14 +90,32 @@ int main(int argc,char* argv[])
 			continue;
 		}
 
-        char ipAddress[IP_ADDRESS_LEN];
+        FILE* filepointer;
+        // opening file in writing mode
+        filepointer = fopen("program.txt", "w");
+
+        // exiting program 
+        if (filepointer == NULL) {
+            printf("Error!");
+            exit(1);
+        }
+
+        if (!filepointer) {
+            printf("File pointer permission error.\n");
+            perror("fopen");
+        }
+
+        fputs(largetext, filepointer);
+        fclose(filepointer);
+
+        //char ipAddress[IP_ADDRESS_LEN];
 		// copy client ip to local char[]
-        strcpy_s(ipAddress, sizeof(ipAddress), inet_ntoa(clientAddress.sin_addr));
+        //strcpy_s(ipAddress, sizeof(ipAddress), inet_ntoa(clientAddress.sin_addr));
 		// convert port number from TCP/IP byte order to
 		// little endian byte order
-        int clientPort = ntohs((u_short)clientAddress.sin_port);
+        //int clientPort = ntohs((u_short)clientAddress.sin_port);
 
-        printf("Client connected from ip: %s, port: %d, sent: %s.\n", ipAddress, clientPort, accessBuffer);
+        //printf("Client connected from ip: %s, port: %d, sent: %s.\n", ipAddress, clientPort, accessBuffer);
 
 		// possible message processing logic could be placed here
     }
