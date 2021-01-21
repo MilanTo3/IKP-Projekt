@@ -73,13 +73,13 @@ int main(int argc,char* argv[])
 		// set whole buffer to zero
         memset(accessBuffer, 0, ACCESS_BUFFER_SIZE);
 
-        char* largetext = (char*)malloc(sizeof(1000));
-        memset(largetext, 0, 1000);
+        char* largetext = (char*)malloc(sizeof(2000));
+        memset(largetext, 0, 2000);
 
 		// receive client message
         iResult = snwarq_recvfrom(serverSocket,
 			               largetext,
-						   1000,
+						   2000,
 						   0,
 						   (LPSOCKADDR)&clientAddress,
 						   &sockAddrLen);

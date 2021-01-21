@@ -9,8 +9,9 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 	unsigned int datapointer = 0;
 	int tosend = duzinapodataka;
 	int res = 0;
-	int returnsignal = -1;
+	short returnsignal = -1;
 	unsigned int sequence = 0;
+	short recvcode = 0;
 	Frame frame;
 	struct timeval timevalue;
 
@@ -21,7 +22,7 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 		return 101;
 	}
 
-	while (datapointer < duzinapodataka){
+	while (datapointer < duzinapodataka) {
 
 		if (tosend > FrameDataSize) {
 			frame = makeframe(data + (sequence * FrameDataSize), FrameDataSize, sequence, false);
@@ -35,15 +36,21 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 
 		res = udp_sendto(uticnica, frame, sizeof(Frame), destination, destinationlen);
 
-		sequence++;
+		DWORD timeout = 5 * 1000; // (sec * 1000) to get milliseconds.
 
-		//timevalue.tv_sec = 10;
-		//timevalue.tv_usec = 0;
-		//
-		//if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (char *)&timevalue, sizeof(timevalue)) < 0) {
-		//	perror("Greška prilikom socket timeout operacije.");
-		//	return 102;
-		//}
+		if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+			printf("Greška prilikom socket timeout operacije.");
+			return 102;
+		}
+
+		returnsignal = -1;
+		recvcode = recvfrom(uticnica, (char*)&returnsignal, sizeof(short), 0, destination, &destinationlen);
+
+		if (WSAGetLastError() == WSAETIMEDOUT) {
+			printf("Recv timeout.\n");
+		}
+
+		sequence++;
 
 	}
 
@@ -63,6 +70,7 @@ int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, L
 	bool lastframe = false;
 	unsigned int datapointer = 0;
 	int res = 0;
+	short signal = 0;
 
 	while (!lastframe) {
 
@@ -73,9 +81,14 @@ int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, L
 		datapointer += frame.header.length;
 		lastframe = frame.header.lastframe; // ako je frame.header.lastframe == true kraj prijema.
 
+		signal = Ack;
+		sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
+
 		printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
 
 	}
+
+
 
 	return res;
 }

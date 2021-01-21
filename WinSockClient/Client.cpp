@@ -58,13 +58,13 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	char* largetext = (char*)malloc(sizeof(1000));
-	memset(largetext, 't', 999);
-	memset(largetext + 999, '\0', 1);
+	char* largetext = (char*)malloc(sizeof(2000));
+	memset(largetext, 't', 1999);
+	memset(largetext + 1999, '\0', 1);
 
 	iResult = snwarq_sendto(clientSocket,
 		largetext,
-		1000,
+		2000,
 		0,
 		(LPSOCKADDR)&serverAddress,
 		sockAddrLen);

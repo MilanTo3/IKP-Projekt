@@ -20,6 +20,8 @@ typedef struct frame {
 
 } Frame;
 
+enum Signals{ Ack, AckError };
+
 int calculateCRC(char* data, int duzinapodataka, int polinom);
 Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenum, bool lastframe);
 
