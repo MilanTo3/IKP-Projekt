@@ -3,6 +3,7 @@
 #include "StopAndWaitARQ.h"
 #include "TCPheader.h"
 #include "Helpers.h"
+#include "time.h"
 
 int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPSOCKADDR destination, int destinationlen) {
 
@@ -14,6 +15,12 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 	short recvcode = 0;
 	Frame frame;
 	struct timeval timevalue;
+	short synchrosig;
+	short synchroack;
+	double delta = 500; // pocetna delta je 500 msec.
+	DWORD timeout;
+	int oldRTT;
+	bool retrnsmit;
 
 	if (uticnica == INVALID_SOCKET) {
 		return 100;
@@ -24,6 +31,10 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 
 	while (datapointer < duzinapodataka) {
 
+		synchroack = -1;
+		synchrosig = TcpSyn;
+
+		/*Do something*/
 		if (tosend > FrameDataSize) {
 			frame = makeframe(data + (sequence * FrameDataSize), FrameDataSize, sequence, false);
 			tosend = tosend - FrameDataSize;
@@ -34,21 +45,46 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 			datapointer += tosend;
 		}
 
-		res = udp_sendto(uticnica, frame, sizeof(Frame), destination, destinationlen);
+		do {
 
-		DWORD timeout = 5 * 1000; // (sec * 1000) to get milliseconds.
+			clock_t start = clock();
 
-		if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
-			printf("Greška prilikom socket timeout operacije.");
-			return 102;
-		}
+			res = udp_sendto(uticnica, frame, sizeof(Frame), destination, destinationlen);
 
-		returnsignal = -1;
-		recvcode = recvfrom(uticnica, (char*)&returnsignal, sizeof(short), 0, destination, &destinationlen);
+			if (sequence == 0) {
+				timeout = (int)(1.8 * delta); // (sec * 1000) to get milliseconds.
+			}
+			else {
+				timeout = (int)(0.8 * oldRTT) + (0.2 * delta); //(a*Stari_RTT) + ((1-a) * Novi_RTT_Uzorak)
 
-		if (WSAGetLastError() == WSAETIMEDOUT) {
-			printf("Recv timeout.\n");
-		}
+			}
+			timeout = 1.5 * timeout;
+
+			if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+				printf("Greška prilikom socket timeout operacije.");
+				return 102;
+			}
+
+			returnsignal = -1;
+			recvcode = recvfrom(uticnica, (char*)&returnsignal, sizeof(short), 0, destination, &destinationlen);
+
+			if (WSAGetLastError() == WSAETIMEDOUT) {
+				printf("Recv timeout.\n");
+				retrnsmit = true;
+			}
+			else {
+				retrnsmit = false;
+			}
+
+			clock_t end = clock();
+
+			printf("Odredjen timeout je %d. Delta je: %lf.\n", timeout, delta);
+
+			oldRTT = delta;
+			delta = ((double)(end - start)) / CLOCKS_PER_SEC; // in seconds.
+			delta = delta * 1000; // in millis
+
+		} while (retrnsmit);
 
 		sequence++;
 
@@ -73,6 +109,7 @@ int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, L
 	short signal = 0;
 
 	while (!lastframe) {
+		//-----------------
 
 		memset(&frame, 0, sizeof(Frame));
 		res = udp_recvfrom(uticnica, &frame, sizeof(Frame), flag, clientaddress, clientlen);
@@ -86,9 +123,8 @@ int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, L
 
 		printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
 
+
 	}
-
-
 
 	return res;
 }
