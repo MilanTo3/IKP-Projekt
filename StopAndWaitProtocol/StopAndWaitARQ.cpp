@@ -17,7 +17,7 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 	struct timeval timevalue;
 	short synchrosig;
 	short synchroack;
-	double delta = 500; // pocetna delta je 500 msec.
+	double delta = 1; // pocetna delta je 10 msec.
 	DWORD timeout;
 	int oldRTT;
 	bool retrnsmit;
@@ -49,7 +49,7 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 
 			clock_t start = clock();
 
-			res = udp_sendto(uticnica, frame, sizeof(Frame), destination, destinationlen);
+			res = sendto(uticnica, (char *)&frame, sizeof(Frame), 0, destination, destinationlen);
 
 			if (sequence == 0) {
 				timeout = (int)(1.8 * delta); // (sec * 1000) to get milliseconds.
@@ -58,7 +58,7 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 				timeout = (int)(0.8 * oldRTT) + (0.2 * delta); //(a*Stari_RTT) + ((1-a) * Novi_RTT_Uzorak)
 
 			}
-			timeout = 1.5 * timeout;
+			timeout = 1.2 * timeout;
 
 			if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
 				printf("Greška prilikom socket timeout operacije.");
@@ -84,6 +84,8 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 			delta = ((double)(end - start)) / CLOCKS_PER_SEC; // in seconds.
 			delta = delta * 1000; // in millis
 
+			printf("Stara delta je %d. Nova delta je: %lf.\n\n", oldRTT, delta);
+
 		} while (retrnsmit);
 
 		sequence++;
@@ -107,22 +109,30 @@ int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, L
 	unsigned int datapointer = 0;
 	int res = 0;
 	short signal = 0;
+	int seqnum = -1;
 
 	while (!lastframe) {
 		//-----------------
 
 		memset(&frame, 0, sizeof(Frame));
-		res = udp_recvfrom(uticnica, &frame, sizeof(Frame), flag, clientaddress, clientlen);
-		memcpy(data + datapointer, frame.data, frame.header.length);
+		res = recvfrom(uticnica, (char *)&frame, sizeof(Frame), flag, clientaddress, clientlen);
 
-		datapointer += frame.header.length;
-		lastframe = frame.header.lastframe; // ako je frame.header.lastframe == true kraj prijema.
+		if (seqnum < (int)frame.header.sequencenum) {
+			memcpy(data + datapointer, frame.data, frame.header.length);
+
+			datapointer += frame.header.length;
+			lastframe = frame.header.lastframe; // ako je frame.header.lastframe == true kraj prijema.
+
+			printf("Datapointer: %d.\n", datapointer);
+
+			seqnum = frame.header.sequencenum;
+
+		}
 
 		signal = Ack;
 		sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
 
 		printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
-
 
 	}
 

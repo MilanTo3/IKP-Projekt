@@ -8,8 +8,6 @@ CRITICAL_SECTION recvlock;
 
 int udp_sendto(SOCKET uticnica, Frame frame, int duzinapodataka, LPSOCKADDR destination, int destinationlen) {
 	// TODO here
-	InitializeCriticalSection(&sendlock);
-	EnterCriticalSection(&sendlock);
 
 	int result = 0;
 	int sentbytes = 0;
@@ -23,15 +21,10 @@ int udp_sendto(SOCKET uticnica, Frame frame, int duzinapodataka, LPSOCKADDR dest
 
 	}
 
-	LeaveCriticalSection(&sendlock);
-
 	return sentbytes;
 }
 
 int udp_recvfrom(SOCKET uticnica, Frame *frame, int duzinapodataka, int flag, LPSOCKADDR clientaddress, int *clientlen) {
-
-	InitializeCriticalSection(&recvlock);
-	EnterCriticalSection(&recvlock);
 
 	int result = 0;
 	int receivedbytes = 0;
@@ -44,8 +37,6 @@ int udp_recvfrom(SOCKET uticnica, Frame *frame, int duzinapodataka, int flag, LP
 		receivedbytes += result;
 
 	}
-
-	LeaveCriticalSection(&recvlock);
 
 	return receivedbytes;
 }

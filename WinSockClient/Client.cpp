@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	char* largetext = (char*)malloc(sizeof(2000));
+	char* largetext = (char*)malloc(2000);
 	memset(largetext, 't', 1999);
 	memset(largetext + 1999, '\0', 1);
 
