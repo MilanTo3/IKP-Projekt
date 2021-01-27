@@ -63,6 +63,7 @@ int main(int argc, char* argv[])
 
 	printf("Simple UDP server started and waiting client messages.\n");
 
+	initializeMemPools();
 	// Main server loop
 	while (1) {
 
@@ -86,6 +87,7 @@ int main(int argc, char* argv[])
 			printf("recvfrom failed with error: %d\n", WSAGetLastError());
 			continue;
 		}
+		printf("Here.\n");
 
 		FILE* filepointer;
 		// opening file in writing mode
@@ -135,6 +137,8 @@ int main(int argc, char* argv[])
 	}
 	
 	printf("Server successfully shut down.\n");
+	cleanMemoryPools();
+
 	return 0;
 }
 

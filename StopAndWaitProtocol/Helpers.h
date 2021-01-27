@@ -24,8 +24,7 @@ typedef struct frame {
 
 } Frame;
 
-enum AckSignal{ Ack, AckError };
-enum RTTSignals{ TcpSyn, AckSyn };
+enum AckSignal{ Ack, AckError, TcpSyn, AckSyn };
 
 //void crcInit(void);
 Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenum, bool lastframe);
