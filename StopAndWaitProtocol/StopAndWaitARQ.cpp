@@ -4,52 +4,101 @@
 #include "TCPheader.h"
 #include "Helpers.h"
 #include "time.h"
+#include "memoryPool.h"
+#include "math.h"
 
-int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPSOCKADDR destination, int destinationlen) {
+memoryPool* senderPool;
+memoryPool* receiverPool;
+CRITICAL_SECTION senderlock;
+CRITICAL_SECTION receiverlock;
+bool init = false;
+
+void initializeMemPools() {
+
+	senderPool = createMemoryPool();
+	receiverPool = createMemoryPool();
+	if (senderPool == NULL || receiverPool == NULL) {
+		return;
+	}
+	InitializeCriticalSection(&senderlock);
+	InitializeCriticalSection(&receiverlock);
+	init = true;
+
+}
+
+int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPSOCKADDR destination, int destinationlen) {
+
+	if (init == false) {
+		return 100;
+	}
+	else if (uticnica == INVALID_SOCKET) {
+		return 101;
+	}
+	else if (duzinapodataka < 0) {
+		return 102;
+	}
+	else if (checkallocation(senderPool, ceil((double)duzinapodataka / FrameDataSize)) == NULL) {
+		return 103;
+	}
 
 	unsigned int datapointer = 0;
 	int tosend = duzinapodataka;
 	int res = 0;
 	short returnsignal = -1;
 	unsigned int sequence = 0;
-	short recvcode = 0;
 	Frame frame;
 	struct timeval timevalue;
 	short synchrosig;
 	short synchroack;
-	double delta = 1; // pocetna delta je 10 msec.
+	double delta = 100; // pocetna delta je 1 msec.
 	DWORD timeout;
 	int oldRTT;
 	bool retrnsmit;
 
-	if (uticnica == INVALID_SOCKET) {
-		return 100;
-	}
-	else if (duzinapodataka < 0) {
-		return 101;
+	DWORD firsttimeout = 100;
+
+	EnterCriticalSection(&senderlock);
+	if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&firsttimeout, sizeof(firsttimeout)) < 0) {
+		printf("Greška prilikom socket timeout operacije.");
+		return 102;
 	}
 
 	while (datapointer < duzinapodataka) {
 
-		synchroack = -1;
-		synchrosig = TcpSyn;
-
 		/*Do something*/
 		if (tosend > FrameDataSize) {
 			frame = makeframe(data + (sequence * FrameDataSize), FrameDataSize, sequence, false);
+			writeFrameToPool(senderPool, frame);
 			tosend = tosend - FrameDataSize;
 			datapointer += FrameDataSize;
 		}
 		else {
 			frame = makeframe(data + (sequence * FrameDataSize), tosend, sequence, true);
+			writeFrameToPool(senderPool, frame);
 			datapointer += tosend;
 		}
+	}
+
+	while (frame.header.lastframe != true) {
+
+		frame = getFrameBySeqNum(senderPool, sequence);
 
 		do {
 
+			//synchroack = -1;
+			//synchrosig = TcpSyn;
+
 			clock_t start = clock();
 
-			res = sendto(uticnica, (char *)&frame, sizeof(Frame), 0, destination, destinationlen);
+			//while (synchroack != AckSyn) {
+			//	sendto(uticnica, (char*)&synchrosig, sizeof(short), 0, destination, destinationlen);
+			//	printf("Poslat TcpSyn.\n");
+			//	recvfrom(uticnica, (char*)&synchroack, sizeof(short), 0, destination, &destinationlen);
+			//	printf("Primljen Acksyn.\n");
+			//}
+
+			res = sendto(uticnica, (char*)&frame, sizeof(Frame), 0, destination, destinationlen);
+			printf("Poslat frejm.\n");
 
 			if (sequence == 0) {
 				timeout = (int)(1.8 * delta); // (sec * 1000) to get milliseconds.
@@ -66,24 +115,26 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 			}
 
 			returnsignal = -1;
-			recvcode = recvfrom(uticnica, (char*)&returnsignal, sizeof(short), 0, destination, &destinationlen);
+			recvfrom(uticnica, (char*)&returnsignal, sizeof(short), 0, destination, &destinationlen);
 
 			if (WSAGetLastError() == WSAETIMEDOUT) {
-				printf("Recv timeout.\n");
+				retrnsmit = true;
+			}
+			else if (returnsignal != Ack) {
 				retrnsmit = true;
 			}
 			else {
 				retrnsmit = false;
+				printf("Primljen ack.\n");
 			}
 
 			clock_t end = clock();
-
-			printf("Odredjen timeout je %d. Delta je: %lf.\n", timeout, delta);
 
 			oldRTT = delta;
 			delta = ((double)(end - start)) / CLOCKS_PER_SEC; // in seconds.
 			delta = delta * 1000; // in millis
 
+			printf("Odredjen timeout je %d. Delta je: %lf.\n", timeout, delta);
 			printf("Stara delta je %d. Nova delta je: %lf.\n\n", oldRTT, delta);
 
 		} while (retrnsmit);
@@ -92,40 +143,72 @@ int snwarq_sendto(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPS
 
 	}
 
-	return res;
+	LeaveCriticalSection(&senderlock);
+
+	return datapointer;
 }
 
-int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, LPSOCKADDR clientaddress, int *clientlen) {
+int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPSOCKADDR clientaddress, int* clientlen) {
 
-	if (uticnica == INVALID_SOCKET) {
+	if (init == false) {
 		return 100;
 	}
-	else if (duzinapodataka < 0) {
+	else if (uticnica == INVALID_SOCKET) {
 		return 101;
+	}
+	else if (duzinapodataka < 0) {
+		return 102;
+	}
+	else if (checkallocation(receiverPool, ceil((double)duzinapodataka / FrameDataSize)) == NULL) {
+		return 103;
+	}
+
+	int numframeseq = ceil((double)duzinapodataka / FrameDataSize);
+	int* frameseqarray = (int*)malloc(numframeseq * sizeof(int));
+	if (frameseqarray == NULL) {
+		return 104;
 	}
 
 	Frame frame;
 	bool lastframe = false;
 	unsigned int datapointer = 0;
 	int res = 0;
-	short signal = 0;
-	int seqnum = -1;
+	short signal;
+	short synchroack;
+	int seqindex = 0;
+	u_long mode;
 
-	while (!lastframe) {
+	EnterCriticalSection(&receiverlock);
+
+	initializeArray(frameseqarray, numframeseq);
+	while (datapointer < duzinapodataka) {
 		//-----------------
 
-		memset(&frame, 0, sizeof(Frame));
-		res = recvfrom(uticnica, (char *)&frame, sizeof(Frame), flag, clientaddress, clientlen);
+		//signal = -1;
+		//synchroack = AckSyn;
+		//
+		//while (signal != TcpSyn) {
+		//	recvfrom(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, clientlen);
+		//	printf("Primljen TcpSyn.\n");
+		//	sendto(uticnica, (char*)&synchroack, sizeof(short), 0, clientaddress, *clientlen);
+		//	printf("Poslat AckSyn.\n");
+		//}
 
-		if (seqnum < (int)frame.header.sequencenum) {
-			memcpy(data + datapointer, frame.data, frame.header.length);
+		memset(&frame, 0, sizeof(Frame));
+		res = recvfrom(uticnica, (char*)&frame, sizeof(Frame), flag, clientaddress, clientlen);
+
+		if (isInArray(frameseqarray, numframeseq, frame.header.sequencenum) == false) {
+			//memcpy(data + datapointer, frame.data, frame.header.length);
+
+			writeFrameToPool(receiverPool, frame);
 
 			datapointer += frame.header.length;
 			lastframe = frame.header.lastframe; // ako je frame.header.lastframe == true kraj prijema.
 
 			printf("Datapointer: %d.\n", datapointer);
 
-			seqnum = frame.header.sequencenum;
+			frameseqarray[seqindex] = frame.header.sequencenum;
+			seqindex++;
 
 		}
 
@@ -136,5 +219,43 @@ int snwarq_recvfrom(SOCKET uticnica, char *data, int duzinapodataka, int flag, L
 
 	}
 
-	return res;
+	copyPoolToBuffer(receiverPool, data, duzinapodataka);
+
+	LeaveCriticalSection(&receiverlock);
+	free(frameseqarray);
+
+	return datapointer;
+}
+
+void initializeArray(int* frameseqarray, int duzina) {
+
+	int i = 0;
+	for (i = 0; i < duzina; i++) {
+		frameseqarray[i] = -1;
+	}
+
+}
+
+bool isInArray(int* frameseqarray, int duzina, int value) {
+
+	int i;
+	for (i = 0; i < duzina; i++) {
+		if (frameseqarray[i] == value) {
+			printf("Primljen duplikat.\n");
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void cleanMemoryPools() {
+
+	mempool_clean(senderPool);
+	mempool_clean(receiverPool);
+
+	free(senderPool);
+	free(receiverPool);
+	init = false;
+
 }

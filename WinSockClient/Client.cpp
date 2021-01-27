@@ -62,6 +62,7 @@ int main(int argc, char* argv[])
 	memset(largetext, 't', 1999);
 	memset(largetext + 1999, '\0', 1);
 
+	initializeMemPools();
 	iResult = snwarq_sendto(clientSocket,
 		largetext,
 		2000,
@@ -94,6 +95,8 @@ int main(int argc, char* argv[])
 		printf("closesocket failed with error: %ld\n", WSAGetLastError());
 		return 1;
 	}
+
+	cleanMemoryPools();
 
 	return 0;
 }

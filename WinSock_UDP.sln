@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinSockClient", "WinSockCli
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StopAndWaitProtocol", "StopAndWaitProtocol\StopAndWaitProtocol.vcxproj", "{63D9DFE9-2B52-4F3A-A392-93DDD4D6DC9E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "memoryPool", "memoryPool\memoryPool.vcxproj", "{DB06604E-877A-40B1-BFD0-9E60C852CF34}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -37,6 +39,14 @@ Global
 		{63D9DFE9-2B52-4F3A-A392-93DDD4D6DC9E}.Release|Win32.Build.0 = Release|Win32
 		{63D9DFE9-2B52-4F3A-A392-93DDD4D6DC9E}.Release|x64.ActiveCfg = Release|x64
 		{63D9DFE9-2B52-4F3A-A392-93DDD4D6DC9E}.Release|x64.Build.0 = Release|x64
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Debug|Win32.Build.0 = Debug|Win32
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Debug|x64.ActiveCfg = Debug|x64
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Debug|x64.Build.0 = Debug|x64
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Release|Win32.ActiveCfg = Release|Win32
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Release|Win32.Build.0 = Release|Win32
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Release|x64.ActiveCfg = Release|x64
+		{DB06604E-877A-40B1-BFD0-9E60C852CF34}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
