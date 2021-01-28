@@ -135,6 +135,7 @@ void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 	int datapointer = 0;
 	Frame frame;
 	int i = 0;
+	int j;
 
 	while (current != NULL) {
 
@@ -143,6 +144,7 @@ void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 		for (i = 0; i < numblocks; i++) {
 
 			memcpy(&frame, current->blockstart + sizeof(Frame) * i, sizeof(Frame));
+
 			if (datapointer + frame.header.length < duzinapodataka) {
 				memcpy(buffer + datapointer, &frame.data, frame.header.length);
 				datapointer += frame.header.length;
@@ -150,6 +152,7 @@ void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 			else {
 				memcpy(buffer + datapointer, &frame.data, duzinapodataka - datapointer);
 				datapointer += duzinapodataka - datapointer;
+
 			}
 
 			if (frame.header.lastframe == true || datapointer >= duzinapodataka) {
@@ -177,31 +180,6 @@ void printmemoryPool(char* framepointer) {
 
 }
 
-void mempool_free(memoryPool* pool, void* ptr) {
-	// run through the pool, find where this ptr is, cut it out from there
-	if (pool->firstallocation->blockstart == ptr) {
-		pool->firstallocation = pool->firstallocation->next;
-		return;
-	}
-
-	// it is not the first
-	FrameAllocation* current = pool->firstallocation->next;
-	FrameAllocation* tmp = pool->firstallocation;
-	while (current != NULL) {
-		if (current->blockstart == ptr) {
-			// found you :)
-			// lets link the previous to the next
-			tmp->next = current->next;
-			// now get rid of the current
-			free(current->blockstart);
-			free(current);
-			return;
-		}
-		tmp = current;
-		current = current->next;
-	}
-}
-
 void mempool_clean(memoryPool* pool) {
 
 	FrameAllocation* current = pool->firstallocation;
@@ -213,5 +191,6 @@ void mempool_clean(memoryPool* pool) {
 		current = tmp;
 	}
 	pool->firstallocation = NULL;
+	pool->allocatedFrameSpaces = 0;
 
 }

@@ -45,7 +45,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 	int tosend = duzinapodataka;
 	int res = 0;
 	short returnsignal = -1;
-	unsigned int sequence = 0;
+	unsigned int sequence;
 	Frame frame;
 	struct timeval timevalue;
 	short synchrosig;
@@ -54,6 +54,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 	DWORD timeout;
 	int oldRTT;
 	bool retrnsmit;
+	bool endsend;
 
 	DWORD firsttimeout = 100;
 
@@ -63,6 +64,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 		return 102;
 	}
 
+	sequence = 0;
 	while (datapointer < duzinapodataka) {
 
 		/*Do something*/
@@ -78,7 +80,15 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 			datapointer += tosend;
 		}
 
+		sequence++;
+	}
 
+	sequence = 0;
+	endsend = false;
+
+	while (endsend != true) {
+
+		frame = getFrameBySeqNum(senderPool, sequence);
 
 		do {
 
@@ -118,10 +128,9 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 				retrnsmit = true;
 				printf("Vrsi se retransmisija za TIMEOUT\n");
 			}
-			/*else if (returnsignal != Ack) {
-				retrnsmit = true;
-				printf("Vrsi se retransmisija zbog neodgovarajuceg SIGNALA\n");
-			}*/
+			else if (returnsignal == AckFin) {
+				goto labela;
+			}
 			else {
 				retrnsmit = false;
 				printf("Primljen ack.\n");
@@ -141,6 +150,8 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 		sequence++;
 
 	}
+
+	labela:
 
 	LeaveCriticalSection(&senderlock);
 
@@ -216,8 +227,14 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 			printf("Frame sa SeqNumberom %d je primljen\n", frame.header.sequencenum);
 		}
 
-		signal = Ack;
-		sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
+		if (datapointer < duzinapodataka && frame.header.lastframe != true) {
+			signal = Ack;
+			sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
+		}
+		else {
+			signal = AckFin;
+			sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
+		}
 
 		//printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
 

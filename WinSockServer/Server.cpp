@@ -70,13 +70,13 @@ int main(int argc, char* argv[])
 	sockaddr_in clientAddress;
 	memset(&clientAddress, 0, sizeof(sockaddr_in));
 
-	char* largetext = (char*)malloc(600);
-	memset(largetext, 0, 600);
+	char* largetext = (char*)malloc(673);
+	memset(largetext, 0, 673);
 
 	//receive client message
 	iResult = snwarq_recvfrom(serverSocket,
 		largetext,
-		600,
+		673,
 		0,
 		(LPSOCKADDR)&clientAddress,
 		&sockAddrLen);
@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
 		perror("fopen");
 	}
 
-	fputs(largetext, filepointer);
+	fwrite(largetext, 673, 1, filepointer);
 	fclose(filepointer);
 	free(largetext);
 
