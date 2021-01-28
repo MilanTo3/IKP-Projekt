@@ -54,6 +54,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 	DWORD timeout;
 	int oldRTT;
 	bool retrnsmit;
+	bool endsend = false;
 
 	DWORD firsttimeout = 100;
 
@@ -77,25 +78,20 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 			writeFrameToPool(senderPool, frame);
 			datapointer += tosend;
 		}
+
+		sequence++;
 	}
 
-	while (frame.header.lastframe != true) {
+	sequence = 0;
+
+	while (endsend != true) {
 
 		frame = getFrameBySeqNum(senderPool, sequence);
+		endsend = frame.header.lastframe;
 
 		do {
 
-			//synchroack = -1;
-			//synchrosig = TcpSyn;
-
 			clock_t start = clock();
-
-			//while (synchroack != AckSyn) {
-			//	sendto(uticnica, (char*)&synchrosig, sizeof(short), 0, destination, destinationlen);
-			//	printf("Poslat TcpSyn.\n");
-			//	recvfrom(uticnica, (char*)&synchroack, sizeof(short), 0, destination, &destinationlen);
-			//	printf("Primljen Acksyn.\n");
-			//}
 
 			res = sendto(uticnica, (char*)&frame, sizeof(Frame), 0, destination, destinationlen);
 			printf("Poslat frejm.\n");
@@ -184,16 +180,6 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 	while (datapointer < duzinapodataka) {
 		//-----------------
 
-		//signal = -1;
-		//synchroack = AckSyn;
-		//
-		//while (signal != TcpSyn) {
-		//	recvfrom(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, clientlen);
-		//	printf("Primljen TcpSyn.\n");
-		//	sendto(uticnica, (char*)&synchroack, sizeof(short), 0, clientaddress, *clientlen);
-		//	printf("Poslat AckSyn.\n");
-		//}
-
 		memset(&frame, 0, sizeof(Frame));
 		res = recvfrom(uticnica, (char*)&frame, sizeof(Frame), flag, clientaddress, clientlen);
 
@@ -214,8 +200,6 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 
 		signal = Ack;
 		sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
-
-		printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
 
 	}
 

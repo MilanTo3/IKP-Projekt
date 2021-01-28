@@ -69,6 +69,34 @@ void* checkallocation(memoryPool* pool, unsigned int sequencenum) {
 	return pointer;
 }
 
+Frame getFrameBySeqNum(memoryPool* pool, unsigned int sequencenum) {
+
+	int numblocks;
+	FrameAllocation* current = pool->firstallocation;
+	Frame frame;
+	memset(&frame, 0, sizeof(Frame));
+	int i = 0;
+
+	while (current != NULL) {
+
+		numblocks = (current->blockend - current->blockstart) / sizeof(Frame);
+
+		for (i = 0; i < numblocks; i++) {
+
+			memcpy(&frame, current->blockstart + sizeof(Frame) * i, sizeof(Frame));
+			if (frame.header.sequencenum == sequencenum) {
+				return frame;
+			}
+
+		}
+
+		current = current->next;
+
+	}
+
+	return frame;
+}
+
 void writeFrameToPool(memoryPool* pool, Frame frame) {
 
 	int numblocks;
@@ -84,7 +112,7 @@ void writeFrameToPool(memoryPool* pool, Frame frame) {
 
 		if (numblocks > (int)frame.header.sequencenum) {
 
-			printf("Writeblock: %d.\n", writeblock);
+			//printf("Writeblock: %d.\n", writeblock);
 			memcpy(current->blockstart + sizeof(Frame) * writeblock, &frame, sizeof(Frame));
 			//printmemoryPool(current->blockstart + sizeof(Frame) * writeblock);
 			break;
@@ -115,8 +143,14 @@ void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 		for (i = 0; i < numblocks; i++) {
 
 			memcpy(&frame, current->blockstart + sizeof(Frame) * i, sizeof(Frame));
-			memcpy(buffer + datapointer, &frame.data, frame.header.length);
-			datapointer += frame.header.length;
+			if (datapointer + frame.header.length < duzinapodataka) {
+				memcpy(buffer + datapointer, &frame.data, frame.header.length);
+				datapointer += frame.header.length;
+			}
+			else {
+				memcpy(buffer + datapointer, &frame.data, duzinapodataka - datapointer);
+				datapointer += duzinapodataka - datapointer;
+			}
 
 			if (frame.header.lastframe == true || datapointer >= duzinapodataka) {
 				return;
