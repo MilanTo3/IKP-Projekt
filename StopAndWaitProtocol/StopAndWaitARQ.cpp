@@ -77,11 +77,9 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 			writeFrameToPool(senderPool, frame);
 			datapointer += tosend;
 		}
-	}
 
-	while (frame.header.lastframe != true) {
 
-		frame = getFrameBySeqNum(senderPool, sequence);
+
 
 		do {
 
@@ -98,7 +96,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 			//}
 
 			res = sendto(uticnica, (char*)&frame, sizeof(Frame), 0, destination, destinationlen);
-			printf("Poslat frejm.\n");
+			printf("Poslat frejm: %d.\n", frame.header.sequencenum);
 
 			if (sequence == 0) {
 				timeout = (int)(1.8 * delta); // (sec * 1000) to get milliseconds.
@@ -119,10 +117,12 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 
 			if (WSAGetLastError() == WSAETIMEDOUT) {
 				retrnsmit = true;
+				printf("Vrsi se retransmisija za TIMEOUT\n");
 			}
-			else if (returnsignal != Ack) {
+			/*else if (returnsignal != Ack) {
 				retrnsmit = true;
-			}
+				printf("Vrsi se retransmisija zbog neodgovarajuceg SIGNALA\n");
+			}*/
 			else {
 				retrnsmit = false;
 				printf("Primljen ack.\n");
@@ -170,6 +170,8 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 	}
 
 	Frame frame;
+	memset(&frame, 0, sizeof(Frame));
+	frame.header.lastframe = false;
 	bool lastframe = false;
 	unsigned int datapointer = 0;
 	int res = 0;
@@ -181,7 +183,7 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 	EnterCriticalSection(&receiverlock);
 
 	initializeArray(frameseqarray, numframeseq);
-	while (datapointer < duzinapodataka) {
+	while (datapointer < duzinapodataka && frame.header.lastframe != true) {
 		//-----------------
 
 		//signal = -1;
@@ -199,7 +201,10 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 
 		if (isInArray(frameseqarray, numframeseq, frame.header.sequencenum) == false) {
 			//memcpy(data + datapointer, frame.data, frame.header.length);
-
+			if (frame.header.crc != calculateCrc(frame.data, frame.header.length)) {
+				printf("Podaci unutar frame-a sa SeqNumber: %d su izmenjeni!\n", frame.header.sequencenum);
+				continue;
+			}
 			writeFrameToPool(receiverPool, frame);
 
 			datapointer += frame.header.length;
@@ -209,13 +214,13 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 
 			frameseqarray[seqindex] = frame.header.sequencenum;
 			seqindex++;
-
+			printf("Frame sa SeqNumberom %d je primljen\n", frame.header.sequencenum);
 		}
 
 		signal = Ack;
 		sendto(uticnica, (char*)&signal, sizeof(short), 0, clientaddress, *clientlen);
 
-		printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
+		//printf("Primljen frejm sa sequence brojem: %d.\n", frame.header.sequencenum);
 
 	}
 
@@ -241,7 +246,7 @@ bool isInArray(int* frameseqarray, int duzina, int value) {
 	int i;
 	for (i = 0; i < duzina; i++) {
 		if (frameseqarray[i] == value) {
-			printf("Primljen duplikat.\n");
+			printf("Primljen duplikat, SeqNumber: %d.\n", value);
 			return true;
 		}
 	}

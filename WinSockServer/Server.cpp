@@ -65,49 +65,50 @@ int main(int argc, char* argv[])
 
 	initializeMemPools();
 	// Main server loop
-	while (1) {
+
 
 		//clientAddress will be set from recvfrom
-		sockaddr_in clientAddress;
-		memset(&clientAddress, 0, sizeof(sockaddr_in));
+	sockaddr_in clientAddress;
+	memset(&clientAddress, 0, sizeof(sockaddr_in));
 
-		char* largetext = (char*)malloc(2000);
-		memset(largetext, 0, 2000);
+	char* largetext = (char*)malloc(2000);
+	memset(largetext, 0, 2000);
 
-		//receive client message
-		iResult = snwarq_recvfrom(serverSocket,
-			               largetext,
-						   2000,
-						   0,
-						   (LPSOCKADDR)&clientAddress,
-						   &sockAddrLen);
+	//receive client message
+	iResult = snwarq_recvfrom(serverSocket,
+		largetext,
+		2000,
+		0,
+		(LPSOCKADDR)&clientAddress,
+		&sockAddrLen);
 
-		if (iResult == SOCKET_ERROR)
-		{
-			printf("recvfrom failed with error: %d\n", WSAGetLastError());
-			continue;
-		}
-		printf("Here.\n");
-
-		FILE* filepointer;
-		// opening file in writing mode
-		filepointer = fopen("program.txt", "w");
-
-		// exiting program 
-		if (filepointer == NULL) {
-			printf("Error!");
-			exit(1);
-		}
-
-		if (!filepointer) {
-			printf("File pointer permission error.\n");
-			perror("fopen");
-		}
-
-		fputs(largetext, filepointer);
-		fclose(filepointer);
-		free(largetext);
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("recvfrom failed with error: %d\n", WSAGetLastError());
+		return -1;
 	}
+	printf("Here.\n");
+
+	FILE* filepointer;
+	// opening file in writing mode
+	filepointer = fopen("program.txt", "w");
+
+	// exiting program 
+	if (filepointer == NULL) {
+		printf("Error!");
+		exit(1);
+	}
+
+	if (!filepointer) {
+		printf("File pointer permission error.\n");
+		perror("fopen");
+	}
+
+	fputs(largetext, filepointer);
+	fclose(filepointer);
+	free(largetext);
+
+
 
 	//char ipAddress[IP_ADDRESS_LEN];
 	// copy client ip to local char[]
@@ -128,14 +129,14 @@ int main(int argc, char* argv[])
 		printf("closesocket failed with error: %ld\n", WSAGetLastError());
 		return 1;
 	}
-	
+
 	iResult = WSACleanup();
 	if (iResult == SOCKET_ERROR)
 	{
 		printf("WSACleanup failed with error: %ld\n", WSAGetLastError());
 		return 1;
 	}
-	
+
 	printf("Server successfully shut down.\n");
 	cleanMemoryPools();
 
