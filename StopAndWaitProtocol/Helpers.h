@@ -4,11 +4,15 @@
 #include "stdlib.h"
 #define FrameDataSize 500
 
+typedef unsigned long crc;
+
+#define POLINOM 0x04C11DB7 
+
 typedef struct udp_Header {
 
 	unsigned int sequencenum;
 	unsigned short length;
-	unsigned short checksum;
+	unsigned long crc;
 	bool lastframe;
 
 } udpHeader;
@@ -22,6 +26,8 @@ typedef struct frame {
 
 enum AckSignal{ Ack, AckError, TcpSyn, AckSyn, AckFin };
 
-int calculateCRC(char* data, int duzinapodataka, int polinom);
+//void crcInit(void);
 Frame makeframe(char* data, int duzinapodataka, unsigned int sequencenum, bool lastframe);
-
+crc calculateCrc(char* data, int duzinaPodataka);
+//unsigned int crc32(unsigned char* m, size_t len);
+//unsigned short MODBUS_CRC16_v1(char* buf, unsigned int len);
