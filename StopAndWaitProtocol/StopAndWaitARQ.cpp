@@ -80,7 +80,6 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 
 
 
-
 		do {
 
 			//synchroack = -1;
