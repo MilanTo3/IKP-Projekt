@@ -47,22 +47,16 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 	short returnsignal = -1;
 	unsigned int sequence;
 	Frame frame;
-	struct timeval timevalue;
-	short synchrosig;
-	short synchroack;
-	double delta = 100; // pocetna delta je 1 msec.
+	struct timeval timevalue; // radi na linux sa setsockopt.
+	double delta = 500; // pocetna delta je 1 msec.
 	DWORD timeout;
 	int oldRTT;
 	bool retrnsmit;
 	bool endsend;
-
-	DWORD firsttimeout = 100;
+	clock_t start;
+	clock_t end;
 
 	EnterCriticalSection(&senderlock);
-	if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&firsttimeout, sizeof(firsttimeout)) < 0) {
-		printf("Greška prilikom socket timeout operacije.");
-		return 102;
-	}
 
 	sequence = 0;
 	while (datapointer < duzinapodataka) {
@@ -89,13 +83,22 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 	while (endsend != true) {
 
 		frame = getFrameBySeqNum(senderPool, sequence);
+		endsend = frame.header.lastframe;
+
+		if (sequence == 0) {
+			timeout = (int)(1.8 * delta); // (sec * 1000) to get milliseconds.
+		}
+		else {
+			timeout = (int)(0.8 * oldRTT) + (0.2 * delta); //(a*Stari_RTT) + ((1-a) * Novi_RTT_Uzorak)
+
+		}
+
+		start = clock();
 
 		do {
 
 			//synchroack = -1;
 			//synchrosig = TcpSyn;
-
-			clock_t start = clock();
 
 			//while (synchroack != AckSyn) {
 			//	sendto(uticnica, (char*)&synchrosig, sizeof(short), 0, destination, destinationlen);
@@ -107,14 +110,8 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 			res = sendto(uticnica, (char*)&frame, sizeof(Frame), 0, destination, destinationlen);
 			printf("Poslat frejm: %d.\n", frame.header.sequencenum);
 
-			if (sequence == 0) {
-				timeout = (int)(1.8 * delta); // (sec * 1000) to get milliseconds.
-			}
-			else {
-				timeout = (int)(0.8 * oldRTT) + (0.2 * delta); //(a*Stari_RTT) + ((1-a) * Novi_RTT_Uzorak)
-
-			}
 			timeout = 1.2 * timeout;
+			printf("Timeout: %d.\n", timeout);
 
 			if (setsockopt(uticnica, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
 				printf("Greška prilikom socket timeout operacije.");
@@ -136,16 +133,16 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 				printf("Primljen ack.\n");
 			}
 
-			clock_t end = clock();
-
-			oldRTT = delta;
-			delta = ((double)(end - start)) / CLOCKS_PER_SEC; // in seconds.
-			delta = delta * 1000; // in millis
-
-			printf("Odredjen timeout je %d. Delta je: %lf.\n", timeout, delta);
-			printf("Stara delta je %d. Nova delta je: %lf.\n\n", oldRTT, delta);
-
 		} while (retrnsmit);
+
+		end = clock();
+
+		oldRTT = delta;
+		delta = ((double)(end - start)) / CLOCKS_PER_SEC; // in seconds.
+		delta = delta * 1000; // in millis
+
+		printf("Odredjen timeout je %d. Delta je: %lf.\n", timeout, delta);
+		printf("Stara delta je %d. Nova delta je: %lf.\n\n", oldRTT, delta);
 
 		sequence++;
 
@@ -186,9 +183,7 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 	unsigned int datapointer = 0;
 	int res = 0;
 	short signal;
-	short synchroack;
 	int seqindex = 0;
-	u_long mode;
 
 	EnterCriticalSection(&receiverlock);
 
@@ -217,7 +212,6 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 			}
 			writeFrameToPool(receiverPool, frame);
 
-			datapointer += frame.header.length;
 			lastframe = frame.header.lastframe; // ako je frame.header.lastframe == true kraj prijema.
 
 			printf("Datapointer: %d.\n", datapointer);
