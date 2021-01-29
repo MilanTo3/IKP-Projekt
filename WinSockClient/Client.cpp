@@ -80,6 +80,8 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	printf("Rezultat funkcije koja šalje podatke: %d.\n", iResult);
+
 	printf("Message sent to server, press any key to exit.\n");
 	_getch();
 

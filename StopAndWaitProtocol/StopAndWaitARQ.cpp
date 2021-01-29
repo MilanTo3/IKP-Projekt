@@ -16,6 +16,8 @@ void initializeMemPools() {
 
 	senderPool = createMemoryPool();
 	receiverPool = createMemoryPool();
+	//mempool_calloc(senderPool, 5);
+	//mempool_calloc(receiverPool, 5);
 	if (senderPool == NULL || receiverPool == NULL) {
 		return;
 	}
@@ -43,6 +45,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 	unsigned int datapointer = 0;
 	int tosend = duzinapodataka;
 	int res = 0;
+	int retVal = 0;
 	short returnsignal = -1;
 	unsigned int sequence;
 	Frame frame;
@@ -126,7 +129,8 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 			}
 			else {
 				if (returnsignal == AckFin) {
-					goto labela;
+					retrnsmit = false;
+					endsend = true;
 				}
 				else{
 					retrnsmit = false;
@@ -145,15 +149,14 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 		printf("Odredjen timeout je %d. Delta je: %lf.\n", timeout, delta);
 		printf("Stara delta je %d. Nova delta je: %lf.\n\n", oldRTT, delta);
 
+		retVal += frame.header.length;
 		sequence++;
 
 	}
 
-labela:
-
 	LeaveCriticalSection(&senderlock);
 
-	return datapointer;
+	return retVal;
 }
 
 int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPSOCKADDR clientaddress, int* clientlen) {
@@ -182,6 +185,7 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 	frame.header.lastframe = false;
 	bool lastframe = false;
 	unsigned int datapointer = 0;
+	int retVal;
 	int res = 0;
 	short signal;
 	int seqindex = 0;
@@ -237,12 +241,12 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 
 	}
 
-	copyPoolToBuffer(receiverPool, data, duzinapodataka);
+	retVal = copyPoolToBuffer(receiverPool, data, duzinapodataka);
 
 	LeaveCriticalSection(&receiverlock);
 	free(frameseqarray);
 
-	return datapointer;
+	return retVal;
 }
 
 void initializeArray(int* frameseqarray, int duzina) {

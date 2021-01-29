@@ -86,7 +86,11 @@ int main(int argc, char* argv[])
 		printf("recvfrom failed with error: %d\n", WSAGetLastError());
 		return -1;
 	}
+
 	printf("Here.\n");
+	printf("Povratna vrednost funkcije koja prima podatke: %d.\n", iResult);
+
+	memset(largetext + 1999, '\0', 1);
 
 	FILE* filepointer;
 	// opening file in writing mode
@@ -103,7 +107,8 @@ int main(int argc, char* argv[])
 		perror("fopen");
 	}
 
-	fwrite(largetext, 2000, 1, filepointer);
+	//fwrite(largetext, 2000, 1, filepointer);
+	fputs(largetext, filepointer);
 	fclose(filepointer);
 	free(largetext);
 

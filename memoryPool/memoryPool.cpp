@@ -128,7 +128,7 @@ void writeFrameToPool(memoryPool* pool, Frame frame) {
 
 }
 
-void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
+int copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 
 	int numblocks;
 	FrameAllocation* current = pool->firstallocation;
@@ -156,7 +156,7 @@ void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 			}
 
 			if (frame.header.lastframe == true || datapointer >= duzinapodataka) {
-				return;
+				return datapointer;
 			}
 
 		}
@@ -165,6 +165,7 @@ void copyPoolToBuffer(memoryPool* pool, char* buffer, int duzinapodataka) {
 
 	}
 
+	return datapointer;
 }
 
 void printmemoryPool(char* framepointer) {
