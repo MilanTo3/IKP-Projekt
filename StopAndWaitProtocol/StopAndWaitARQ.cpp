@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "ws2tcpip.h"
 #include "StopAndWaitARQ.h"
-#include "TCPheader.h"
 #include "Helpers.h"
 #include "time.h"
 #include "memoryPool.h"
@@ -125,12 +124,14 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 				retrnsmit = true;
 				printf("Vrsi se retransmisija za TIMEOUT\n");
 			}
-			else if (returnsignal == AckFin) {
-				goto labela;
-			}
 			else {
-				retrnsmit = false;
-				printf("Primljen ack.\n");
+				if (returnsignal == AckFin) {
+					goto labela;
+				}
+				else{
+					retrnsmit = false;
+					printf("Primljen ack.\n");
+				}
 			}
 
 		} while (retrnsmit);
@@ -148,7 +149,7 @@ int snwarq_sendto(SOCKET uticnica, char* data, int duzinapodataka, int flag, LPS
 
 	}
 
-	labela:
+labela:
 
 	LeaveCriticalSection(&senderlock);
 
@@ -213,6 +214,8 @@ int snwarq_recvfrom(SOCKET uticnica, char* data, int duzinapodataka, int flag, L
 			writeFrameToPool(receiverPool, frame);
 
 			lastframe = frame.header.lastframe; // ako je frame.header.lastframe == true kraj prijema.
+
+			datapointer += frame.header.length;
 
 			printf("Datapointer: %d.\n", datapointer);
 
